@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+from llm_utils import LLMAnalyzer
 
 def load_models():
     """加载所有预训练的模型和scaler"""
@@ -60,6 +61,9 @@ def main():
     if not models:
         st.error('未找到训练好的模型，请先运行train.py训练模型！')
         return
+    
+    # 初始化LLM分析器
+    llm_analyzer = LLMAnalyzer()
     
     # 显示模型选择和准确率
     st.sidebar.header('模型选择')
@@ -139,10 +143,13 @@ def main():
         prediction, probability = predict(features, models[model_name], scaler)
         
         st.write('---')
+        prediction_text = ''
         if prediction == 1:
             st.error(f'预测结果：可能患有心脏病（置信度：{probability:.2%}）')
+            prediction_text = f'可能患有心脏病（置信度：{probability:.2%}）'
         else:
             st.success(f'预测结果：心脏健康（置信度：{1-probability:.2%}）')
+            prediction_text = f'心脏健康（置信度：{1-probability:.2%}）'
         
         # 显示风险因素分析
         if probability > 0.5:
@@ -163,6 +170,48 @@ def main():
             
             for factor in risk_factors:
                 st.write(f'- {factor}')
+        
+        # 获取LLM分析
+        st.write('---')
+        st.write('### AI专家分析')
+        
+        # 创建一个空的markdown容器
+        analysis_placeholder = st.empty()
+        
+        try:
+            model_display_name = {
+                'random_forest': '随机森林',
+                'svm': '支持向量机',
+                'logistic_regression': '逻辑回归',
+                'naive_bayes': '朴素贝叶斯',
+                'decision_tree': '决策树',
+                'neural_network': '神经网络',
+                'knn': 'K近邻'
+            }[model_name]
+            
+            # 获取流式响应
+            stream = llm_analyzer.get_health_analysis_stream(
+                features,
+                prediction_text,
+                model_display_name,
+                probability if prediction == 1 else 1-probability
+            )
+            
+            # 用于累积完整的响应
+            full_response = ""
+            
+            # 流式更新UI
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    full_response += chunk.choices[0].delta.content
+                    # 使用markdown显示，这样可以保持格式
+                    analysis_placeholder.markdown(full_response + "▌")
+            
+            # 最终更新，移除光标
+            analysis_placeholder.markdown(full_response)
+            
+        except Exception as e:
+            st.error(str(e))
 
 if __name__ == '__main__':
     main() 
