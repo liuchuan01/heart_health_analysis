@@ -1,5 +1,5 @@
 # LLM API配置
-DEEPSEEK_API_KEY = "sk-0888fae5d9334cbc8d51839e9d3f26df"  # 在环境变量中设置
+DEEPSEEK_API_KEY = "sk-0******d3f26df"  # 在环境变量中设置
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"  # 在环境变量中设置
 
 # LLM提示词模板
